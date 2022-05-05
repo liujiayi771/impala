@@ -110,3 +110,4 @@ gerrit_critic_venv
 
 # Output of single_node_perf_run.py
 perf_results/
+cmake-build-*

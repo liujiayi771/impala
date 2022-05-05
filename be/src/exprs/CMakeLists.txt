@@ -79,27 +79,3 @@ add_library(Exprs
   valid-tuple-id.cc
 )
 add_dependencies(Exprs gen-deps gen_ir_descriptions)
-
-add_library(ExprsTests STATIC
-  datasketches-test.cc
-  expr-test.cc
-  iceberg-functions-test.cc
-  timezone_db-test.cc
-)
-add_dependencies(ExprsTests gen-deps)
-
-ADD_UNIFIED_BE_LSAN_TEST(datasketches-test
- "TestDataSketchesHll.*:TestDataSketchesKll.*:TestDataSketchesCpc.*:TestDataSketchesTheta.*")
-ADD_UNIFIED_BE_LSAN_TEST(iceberg-functions-test "TestIcebergFunctions.*")
-ADD_UNIFIED_BE_LSAN_TEST(expr-test "Instantiations/ExprTest.*")
-# Exception to unified be tests: custom main initiailizes LLVM
-ADD_BE_LSAN_TEST(expr-codegen-test)
-ADD_UNIFIED_BE_LSAN_TEST(timezone_db-test
- "TimezoneDbNamesTest.*:TimezoneDbLoadAliasTest.*:TimezoneDbLoadZoneInfoTest.*")
-
-# expr-codegen-test includes test IR functions
-COMPILE_TO_IR(expr-codegen-test.cc)
-add_dependencies(expr-codegen-test-ir gen-deps)
-add_dependencies(expr-codegen-test expr-codegen-test-ir)
-
-ADD_UDF_TEST(aggregate-functions-test)

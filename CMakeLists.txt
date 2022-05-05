@@ -96,7 +96,6 @@ set_dep_root(BOOST)
 set_dep_root(BREAKPAD)
 set_dep_root(BZIP2)
 set_dep_root(CRCUTIL)
-set_dep_root(FLATBUFFERS)
 set_dep_root(GCC)
 set_dep_root(GFLAGS)
 set_dep_root(GLOG)
@@ -109,7 +108,6 @@ set(LLVM_DEBUG_ROOT
     $ENV{IMPALA_TOOLCHAIN_PACKAGES_HOME}/llvm-$ENV{IMPALA_LLVM_DEBUG_VERSION})
 set_dep_root(LZ4)
 set_dep_root(ZSTD)
-set_dep_root(OPENLDAP)
 set_dep_root(PROTOBUF)
 set_dep_root(RE2)
 set_dep_root(RAPIDJSON)
@@ -248,11 +246,6 @@ set(SASL_FIND_QUIETLY TRUE)
 find_package(Sasl REQUIRED)
 IMPALA_ADD_THIRDPARTY_LIB(cyrus_sasl ${SASL_INCLUDE_DIR} "" ${SASL_SHARED_LIB})
 
-# find openldap
-find_package(Ldap REQUIRED)
-IMPALA_ADD_THIRDPARTY_LIB(ldap ${LDAP_INCLUDE_DIR} ${LDAP_STATIC_LIBRARY} "")
-IMPALA_ADD_THIRDPARTY_LIB(lber "" ${LBER_STATIC_LIBRARY} "")
-
 # The environment variable $THRIFT_HOME is set in impala-config.sh
 # Make sure it's consistent with $THRIFT_ROOT.
 if (NOT ($ENV{THRIFT_HOME} STREQUAL ${THRIFT_ROOT}))
@@ -266,12 +259,6 @@ IMPALA_ADD_THIRDPARTY_LIB(thrift ${THRIFT_INCLUDE_DIR} ${THRIFT_STATIC_LIB} "")
 message(STATUS "Thrift version: ${THRIFT_VERSION}")
 message(STATUS "Thrift contrib dir: ${THRIFT_CONTRIB_DIR}")
 message(STATUS "Thrift compiler: ${THRIFT_COMPILER}")
-
-# find flatbuffers headers, lib and compiler
-find_package(FlatBuffers REQUIRED)
-IMPALA_ADD_THIRDPARTY_LIB(flatbuffers ${FLATBUFFERS_INCLUDE_DIR}
-  ${FLATBUFFERS_STATIC_LIB} "")
-message(STATUS "FlatBuffers compiler: ${FLATBUFFERS_COMPILER}")
 
 # find Snappy headers and libs
 find_package(Snappy REQUIRED)
@@ -332,15 +319,6 @@ find_package(Breakpad REQUIRED)
 IMPALA_ADD_THIRDPARTY_LIB(breakpad_client ${BREAKPAD_INCLUDE_DIR} ${BREAKPAD_STATIC_LIB}
   "")
 
-# Be careful with Kerberos: we do not statically link against it as it is a security
-# dependency.
-find_package(Kerberos REQUIRED)
-IMPALA_ADD_THIRDPARTY_LIB(krb5 ${KERBEROS_INCLUDE_DIR} "" ${KERBEROS_LIBRARY})
-
-# We require certain binaries from the kerberos project for our automated kerberos
-# testing.
-find_package(KerberosPrograms REQUIRED)
-
 # Tests that run any security related tests need to link this in to override the
 # krb5_realm_override() implementation in krb5.
 # See be/src/kudu/security/krb5_realm_override.cc for more information.
@@ -375,27 +353,12 @@ if (NOT APPLE)
     ${LIBUNWIND_SHARED_LIB})
 endif()
 
-# Required for KRPC_GENERATE, which converts protobuf to stubs.
-find_package(KRPC REQUIRED)
-
 # KuduClient can use GLOG
 add_definitions(-DKUDU_HEADERS_USE_GLOG)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
   add_definitions(-DCACHELINESIZE_AARCH64=${CACHELINESIZE_AARCH64})
 endif()
-
-if(NOT $ENV{KUDU_CLIENT_DIR} EQUAL "")
-  set(kuduClient_DIR "$ENV{KUDU_CLIENT_DIR}/usr/local/share/kuduClient/cmake")
-else()
-  if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
-    set(kuduClient_DIR "$ENV{IMPALA_KUDU_HOME}/debug/share/kuduClient/cmake")
-  else()
-    set(kuduClient_DIR "$ENV{IMPALA_KUDU_HOME}/release/share/kuduClient/cmake")
-  endif()
-endif()
-find_package(kuduClient REQUIRED NO_DEFAULT_PATH)
-include_directories(SYSTEM ${KUDU_CLIENT_INCLUDE_DIR})
 
 # Run all commands with a wrapper that generates JUnitXML if the command fails.
 # Disabled if the DISABLE_CMAKE_JUNITXML environment variable is set
@@ -416,15 +379,11 @@ endif()
 # compile these subdirs using their own CMakeLists.txt
 add_subdirectory(common/function-registry)
 add_subdirectory(common/thrift)
-add_subdirectory(common/fbs)
-add_subdirectory(common/protobuf)
 add_subdirectory(be)
-add_subdirectory(docker)
 add_subdirectory(java)
 
 # Build target for all generated files which most backend code depends on
-add_custom_target(gen-deps ALL DEPENDS thrift-deps proto-deps fb-deps
-  kudu-util-proto-deps kudu-rpc-proto-deps kudu-security-proto-deps)
+add_custom_target(gen-deps ALL DEPENDS thrift-deps kudu-util-proto-deps)
 
 add_custom_target(tarballs ALL DEPENDS shell_tarball)
 
@@ -448,7 +407,7 @@ add_custom_target(notests_independent_targets DEPENDS
   java cscope tarballs impala_python
 )
 add_custom_target(notests_regular_targets DEPENDS
-  impalad statestored catalogd admissiond fesupport loggingsupport ImpalaUdf udasample udfsample impala-profile-tool
+        fesupport
 )
 
 add_custom_target(notests_all_targets DEPENDS

@@ -38,11 +38,6 @@ add_library(CodeGen
 )
 add_dependencies(CodeGen gen-deps gen_ir_descriptions)
 
-add_library(CodeGenTests STATIC
-  instruction-counter-test.cc
-)
-add_dependencies(CodeGenTests gen-deps)
-
 # output cross compile to ir metadata
 set(IR_DESC_GEN_OUTPUT
   $ENV{IMPALA_HOME}/be/generated-sources/impala-ir/impala-ir-names.h
@@ -119,16 +114,3 @@ add_custom_command(
   DEPENDS $ENV{IMPALA_HOME}/bin/file2array.sh
   DEPENDS ${LEGACY_AVX_IR_OUTPUT_FILE}
 )
-
-
-# Run the clang compiler to generate BC for llvm-codegen-test
-add_custom_target(test-loop.bc
-  COMMAND ${LLVM_CLANG_EXECUTABLE} ${CLANG_IR_CXX_FLAGS} ${CLANG_INCLUDE_FLAGS} ${CMAKE_SOURCE_DIR}/testdata/llvm/test-loop.cc -o ${CMAKE_SOURCE_DIR}/llvm-ir/test-loop.bc
-  SOURCES ${CMAKE_SOURCE_DIR}/testdata/llvm/test-loop.cc
-)
-
-# Exception to unified be tests: custom main initializes LLVM
-ADD_BE_LSAN_TEST(llvm-codegen-test)
-add_dependencies(llvm-codegen-test test-loop.bc)
-
-ADD_UNIFIED_BE_LSAN_TEST(instruction-counter-test InstructionCounterTest.*)
